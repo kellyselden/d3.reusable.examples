@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+body {
+  font: 10px sans-serif;
+}
+
+.arc path {
+  stroke: #fff;
+}
+
+#text text {
+  font: bold 48px monospace;
+}
+
+.enter {
+  fill: green;
+}
+
+.update {
+  fill: #333;
+}
+
+.exit {
+  fill: brown;
+}
+
+</style>
+<body>
+<div id="text"></div><div class="pie"></div><div class="pie"></div>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="C:\Users\kselden\Documents\GitHub\d3.reusable\d3.reusable.js"></script>
+<script>
+
+var text = d3.reusable(function(me) {
+
+	var div = d3.select(this);
+	var svg = div.append("svg");
+	var g = svg.append("g");
+	
+	function size(width, height) {
+		svg.attr("width", width)
+			.attr("height", height);
+		g.attr("transform", "translate(32," + (height / 2) + ")");
+	}
+	
+	function dataF(data) {
+	  // DATA JOIN
+	  // Join new data with old elements, if any.
+	  var text = g.selectAll("text")
+		  .data(data, function(d) { return d; });
+
+	  // UPDATE
+	  // Update old elements as needed.
+	  text.attr("class", "update")
+		.transition()
+		  .duration(750)
+		  .attr("x", function(d, i) { return i * 32; });
+
+	  // ENTER
+	  // Create new elements as needed.
+	  text.enter().append("text")
+		  .attr("class", "enter")
+		  .attr("dy", ".35em")
+		  .attr("y", -60)
+		  .attr("x", function(d, i) { return i * 32; })
+		  .style("fill-opacity", 1e-6)
+		  .text(function(d) { return d; })
+		.transition()
+		  .duration(750)
+		  .attr("y", 0)
+		  .style("fill-opacity", 1);
+
+	  // EXIT
+	  // Remove old elements as needed.
+	  text.exit()
+		  .attr("class", "exit")
+		.transition()
+		  .duration(750)
+		  .attr("y", 60)
+		  .style("fill-opacity", 1e-6)
+		  .remove();
+	}
+	
+	me.registerOptionChangeDetectors('backgroundColor', 'border');
+	
+	function styleChanged(backgroundColor, border) {
+		div.attr('style', 'background-color:' + backgroundColor + ';border:' + border);
+	}
+	
+	if (false)
+	return function(data) {
+		size(me.width(), me.height());
+		dataF(data);
+		styleChanged(me.backgroundColor(), me.border());
+	};
+	else
+	return [
+		size,
+		dataF,
+		styleChanged
+	];
+})();
+
+var alphabet = "abcdefghijklmnopqrstuvwxyz".split("");
+
+// The initial display.
+text.data(alphabet);
+
+// Grab a random sample of letters from the alphabet, in alphabetical order.
+setInterval(function() {
+  text.data(shuffle(alphabet)
+      .slice(0, Math.floor(Math.random() * 26))
+      .sort());
+}, 1500);
+
+setTimeout(function() {
+	text.backgroundColor('yellow');
+}, 2000);
+setTimeout(function() {
+	text.border('blue 2px dashed');
+}, 4000);
+
+text.options({ width: 960, height: 100 })(d3.select('#text'));
+
+// Shuffles the input array.
+function shuffle(array) {
+  var m = array.length, t, i;
+  while (m) {
+    i = Math.floor(Math.random() * m--);
+    t = array[m], array[m] = array[i], array[i] = t;
+  }
+  return array;
+}
+
+var pie = d3.reusable(function(me, data) {
+	var color = d3.scale.ordinal()
+		.range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"]);
+
+	var arc = d3.svg.arc()
+		.innerRadius(0);
+
+	var pie = d3.layout.pie()
+		.sort(null)
+		.value(function(d) { return d.population; });
+
+	var svg = d3.select(this).append("svg");
+	var g = svg.append("g");
+
+	  data.forEach(function(d) {
+		d.population = +d.population;
+	  });
+
+	  var slice = g.selectAll(".arc")
+		  .data(pie(data))
+		.enter().append("g")
+		  .attr("class", "arc");
+
+	  var path = slice.append("path")
+		  .style("fill", function(d) { return color(d.data.age); });
+
+	  var text = slice.append("text")
+		  .attr("dy", ".35em")
+		  .style("text-anchor", "middle")
+		  .text(function(d) { return d.data.age; });
+	
+	return function() {
+		var width = me.width(),
+			height = me.height(),
+			radius = Math.min(width, height) / 2;
+			
+	arc.outerRadius(radius - 10);
+			
+		svg
+		.attr("width", width)
+		.attr("height", height);
+		
+		g.attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+		
+	  path.attr("d", arc);
+	  
+	  text.attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; });
+	};
+})();
+
+d3.csv("data.csv", function(error, data) {
+	d3.selectAll(".pie")
+		.datum(data)
+		.call(pie
+			//.width(960).height(500)
+			.options({ width: 960, height: 500 })
+		);
+	d3.select(".pie")
+		.datum(data)
+		.call(pie);
+});
+
+setTimeout(function() {
+pie.height(300);
+}, 1000);
+
+</script>
